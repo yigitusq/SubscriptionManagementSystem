@@ -6,6 +6,10 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.springframework.data.annotation.CreatedDate;
+import org.springframework.data.annotation.LastModifiedDate;
+
+import java.time.LocalDateTime;
 
 @Entity
 @Getter
@@ -39,11 +43,13 @@ public class Customer {
     private String mobile;
 
 
-    @Column(name = "updateDate")
-    private String updateDate;
-
     @Column(name = "createDate")
-    private String createDate;
+    @CreatedDate
+    private LocalDateTime createdAt;
+    @Column(name = "updateDate")
+    @LastModifiedDate
+    private LocalDateTime updatedAt;
+
 
 
 

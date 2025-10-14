@@ -22,7 +22,7 @@ public class CustomerController {
     }
 
     @PostMapping("")
-    public Customer save(@RequestBody Customer customer){
-        return customerRepository.save(customer);
+    public void save(@RequestBody Customer customer){
+        customerRepository.save(customer);
     }
 }
