@@ -5,17 +5,17 @@ import jakarta.persistence.*;
 import lombok.*;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
+import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import java.time.LocalDateTime;
 
 @Entity
-@Getter
-@Setter
 @Data
-@AllArgsConstructor
-@NoArgsConstructor
+@NoArgsConstructor  // JPA için gerekli boş constructor
+@AllArgsConstructor // Tüm alanları içeren constructor (isteğe bağlı ama faydalı)
+@EntityListeners(AuditingEntityListener.class)
 @Table(name = "customers")
-public class Customer{
+public class Customer {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "id")
