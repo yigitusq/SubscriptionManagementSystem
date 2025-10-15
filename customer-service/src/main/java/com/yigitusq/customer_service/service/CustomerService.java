@@ -48,7 +48,6 @@ public class CustomerService {
         BeanUtils.copyProperties(dtoCustomer, customer);
         Customer dbCustomer = customerRepository.save(customer);
         BeanUtils.copyProperties(dbCustomer, response);
-
         return response;
     }
 }
