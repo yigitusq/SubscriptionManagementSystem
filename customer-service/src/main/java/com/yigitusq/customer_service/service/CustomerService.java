@@ -45,21 +45,10 @@ public class CustomerService {
     public DtoCustomer save(DtoCustomerIU dtoCustomer) {
         DtoCustomer response = new DtoCustomer();
         Customer customer = new Customer();
-        customer.setName(dtoCustomer.getName());
-        customer.setSurname(dtoCustomer.getSurname());
-        customer.setEmail(dtoCustomer.getEmail());
-        customer.setPassword(dtoCustomer.getPassword());
-        customer.setStatus(dtoCustomer.getStatus());
-        customer.setMobile(dtoCustomer.getMobile());
-        //geçici
-        System.out.println("Kaydedilecek Entity: " + customer.toString());
-
+        BeanUtils.copyProperties(dtoCustomer, customer);
         Customer dbCustomer = customerRepository.save(customer);
-        response.setId(dbCustomer.getId());
-        response.setName(dbCustomer.getName());
-        response.setSurname(dbCustomer.getSurname());
-        response.setEmail(dbCustomer.getEmail());
-        response.setStatus(dbCustomer.getStatus());
+        BeanUtils.copyProperties(dbCustomer, response);
+
         return response;
     }
 }
