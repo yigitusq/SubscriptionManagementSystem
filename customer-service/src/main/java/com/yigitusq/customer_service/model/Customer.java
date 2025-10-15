@@ -2,22 +2,21 @@ package com.yigitusq.customer_service.model;
 
 
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import lombok.*;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
+import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import java.time.LocalDateTime;
 
 @Entity
 @Getter
 @Setter
+@Data
 @AllArgsConstructor
 @NoArgsConstructor
 @Table(name = "customers")
-public class Customer {
+public class Customer extends Auditable{
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "id")
@@ -41,16 +40,6 @@ public class Customer {
 
     @Column(name = "mobile", unique = true)
     private String mobile;
-
-
-    @Column(name = "createDate")
-    @CreatedDate
-    private LocalDateTime createdAt;
-    @Column(name = "updateDate")
-    @LastModifiedDate
-    private LocalDateTime updatedAt;
-
-
 
 
 }
