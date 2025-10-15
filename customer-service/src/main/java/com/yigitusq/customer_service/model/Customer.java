@@ -10,9 +10,10 @@ import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 import java.time.LocalDateTime;
 
 @Entity
-@Data
-@NoArgsConstructor  // JPA için gerekli boş constructor
-@AllArgsConstructor // Tüm alanları içeren constructor (isteğe bağlı ama faydalı)
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
 @EntityListeners(AuditingEntityListener.class)
 @Table(name = "customers")
 public class Customer {
