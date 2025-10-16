@@ -7,6 +7,7 @@ import com.yigitusq.customer_service.repository.CustomerRepository;
 //import lombok.RequiredArgsConstructor;
 import org.springframework.beans.BeanUtils;
 //import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
@@ -17,12 +18,14 @@ public class CustomerService {
 
 
     private final CustomerRepository customerRepository;
+    private final KafkaTemplate<String, Object> kafkaTemplate; // KafkaTemplate'i ekle
 
-    public CustomerService(CustomerRepository customerRepository) {
+    public CustomerService(CustomerRepository customerRepository, KafkaTemplate<String, Object> kafkaTemplate) {
         this.customerRepository = customerRepository;
+        this.kafkaTemplate = kafkaTemplate;
     }
 
-    public DtoCustomer findById(int id) {
+    public DtoCustomer findById(Long id) {
 
         Customer customer = customerRepository.findById(id)
                .orElseThrow(() -> new RuntimeException("Customer not found - id: " + id));
@@ -43,10 +46,15 @@ public class CustomerService {
     }
 
     public DtoCustomer save(DtoCustomerIU dtoCustomer) {
-        DtoCustomer response = new DtoCustomer();
         Customer customer = new Customer();
         BeanUtils.copyProperties(dtoCustomer, customer);
+
         Customer dbCustomer = customerRepository.save(customer);
+
+        System.out.println(dbCustomer.getId() + " ID'li müşteri için 'CustomerCreated' olayı gönderiliyor.");
+        kafkaTemplate.send("customer-events", dbCustomer);
+
+        DtoCustomer response = new DtoCustomer();
         BeanUtils.copyProperties(dbCustomer, response);
         return response;
     }

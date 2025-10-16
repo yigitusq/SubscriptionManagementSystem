@@ -1,7 +1,6 @@
 package com.yigitusq.subscription_service.service;
 
 
-import com.fasterxml.jackson.databind.util.BeanUtil;
 import com.yigitusq.subscription_service.dto.CreateSubscriptionRequest;
 import com.yigitusq.subscription_service.dto.SubscriptionResponse;
 import com.yigitusq.subscription_service.dto.UpdateStatusRequest;
@@ -9,36 +8,47 @@ import com.yigitusq.subscription_service.model.Offer;
 import com.yigitusq.subscription_service.model.Period;
 import com.yigitusq.subscription_service.model.Subscription;
 import com.yigitusq.subscription_service.model.SubscriptionStatus;
+import com.yigitusq.subscription_service.repository.CustomerRepository;
 import com.yigitusq.subscription_service.repository.OfferRepository;
 import com.yigitusq.subscription_service.repository.SubscriptionRepository;
-import lombok.RequiredArgsConstructor;
 import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
-import java.util.Optional;
 
 @Service
-@RequiredArgsConstructor
 public class SubscriptionService {
+
     private final SubscriptionRepository subscriptionRepository;
     private final OfferRepository offerRepository;
+    private final CustomerRepository customerRepository; // RestTemplate yerine bunu ekledik
 
-    public SubscriptionResponse createSubscription(CreateSubscriptionRequest request){
+    public SubscriptionService(SubscriptionRepository subscriptionRepository,
+                               OfferRepository offerRepository,
+                               CustomerRepository customerRepository) { // RestTemplate'i sildik
+        this.subscriptionRepository = subscriptionRepository;
+        this.offerRepository = offerRepository;
+        this.customerRepository = customerRepository;
+    }
+    public SubscriptionResponse createSubscription(CreateSubscriptionRequest request) {
+        // --- YENİ KONTROL: Müşteri kendi veritabanımızda var mı? ---
+        customerRepository.findById(request.getCustomerId())
+                .orElseThrow(() -> new RuntimeException("Abonelik oluşturulamaz: Müşteri bulunamadı - id: " + request.getCustomerId()));
+        // --- KONTROL BİTTİ ---
+
         Offer offer = offerRepository.findById(request.getOfferId())
-                .orElseThrow(() -> new RuntimeException("Offer not found" + request.getOfferId()));
-
+                .orElseThrow(() -> new RuntimeException("Teklif bulunamadı: " + request.getOfferId()));
 
         Subscription subscription = new Subscription();
         subscription.setCustomerId(request.getCustomerId());
         subscription.setOfferId(request.getOfferId());
-        subscription.setStatus(SubscriptionStatus.AKTIF);
+        subscription.setStatus(SubscriptionStatus.ACTIVE);
 
         LocalDateTime now = LocalDateTime.now();
-        if(offer.getPeriod() == Period.AYLIK){
+        if(offer.getPeriod() == Period.MONTHLY){
             subscription.setRenewDate(now.plusMonths(1));
         }
-        else if(offer.getPeriod() == Period.YILLIK){
+        else if(offer.getPeriod() == Period.ANNUALLY){
             subscription.setRenewDate(now.plusYears(1));
         }
 
