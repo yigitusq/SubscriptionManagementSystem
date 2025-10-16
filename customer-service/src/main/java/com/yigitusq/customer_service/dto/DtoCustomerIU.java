@@ -9,7 +9,6 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class DtoCustomerIU {
 
-
     private String name;
 
     private String surname;
