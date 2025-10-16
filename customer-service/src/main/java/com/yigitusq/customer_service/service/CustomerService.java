@@ -5,25 +5,23 @@ import com.yigitusq.customer_service.dto.DtoCustomerIU;
 import com.yigitusq.customer_service.model.Customer;
 import com.yigitusq.customer_service.repository.CustomerRepository;
 //import lombok.RequiredArgsConstructor;
+import lombok.RequiredArgsConstructor;
 import org.springframework.beans.BeanUtils;
 //import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.kafka.core.KafkaTemplate;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
 import java.util.List;
 
+@RequiredArgsConstructor
 @Service
 public class CustomerService {
 
-
     private final CustomerRepository customerRepository;
-    private final KafkaTemplate<String, Object> kafkaTemplate; // KafkaTemplate'i ekle
-
-    public CustomerService(CustomerRepository customerRepository, KafkaTemplate<String, Object> kafkaTemplate) {
-        this.customerRepository = customerRepository;
-        this.kafkaTemplate = kafkaTemplate;
-    }
+    private final KafkaTemplate<String, Object> kafkaTemplate;
+    private final PasswordEncoder passwordEncoder;
 
     public DtoCustomer findById(Long id) {
 
@@ -48,6 +46,9 @@ public class CustomerService {
     public DtoCustomer save(DtoCustomerIU dtoCustomer) {
         Customer customer = new Customer();
         BeanUtils.copyProperties(dtoCustomer, customer);
+
+        String hashedPassword = passwordEncoder.encode(dtoCustomer.getPassword());
+        customer.setPassword(hashedPassword);
 
         Customer dbCustomer = customerRepository.save(customer);
 
