@@ -11,34 +11,31 @@ import com.yigitusq.subscription_service.model.SubscriptionStatus;
 import com.yigitusq.subscription_service.repository.CustomerRepository;
 import com.yigitusq.subscription_service.repository.OfferRepository;
 import com.yigitusq.subscription_service.repository.SubscriptionRepository;
+import lombok.RequiredArgsConstructor;
 import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import com.yigitusq.subscription_service.client.CustomerServiceClient; // Yeni Feign Client'ı import et
+import feign.FeignException; // Feign'in kendi exception sınıfı
 
 @Service
+@RequiredArgsConstructor
 public class SubscriptionService {
 
     private final SubscriptionRepository subscriptionRepository;
     private final OfferRepository offerRepository;
-    private final CustomerRepository customerRepository; // RestTemplate yerine bunu ekledik
+    private final CustomerServiceClient customerServiceClient;
 
-    public SubscriptionService(SubscriptionRepository subscriptionRepository,
-                               OfferRepository offerRepository,
-                               CustomerRepository customerRepository) { // RestTemplate'i sildik
-        this.subscriptionRepository = subscriptionRepository;
-        this.offerRepository = offerRepository;
-        this.customerRepository = customerRepository;
-    }
     public SubscriptionResponse createSubscription(CreateSubscriptionRequest request) {
-        // --- YENİ KONTROL: Müşteri kendi veritabanımızda var mı? ---
-        customerRepository.findById(request.getCustomerId())
-                .orElseThrow(() -> new RuntimeException("Abonelik oluşturulamaz: Müşteri bulunamadı - id: " + request.getCustomerId()));
-        // --- KONTROL BİTTİ ---
+        try {
+            customerServiceClient.getCustomerById(request.getCustomerId());
+        } catch (FeignException.NotFound ex) {
+            throw new RuntimeException("Abonelik oluşturulamaz: Müşteri bulunamadı - id: " + request.getCustomerId());
+        }
 
         Offer offer = offerRepository.findById(request.getOfferId())
                 .orElseThrow(() -> new RuntimeException("Teklif bulunamadı: " + request.getOfferId()));
-
         Subscription subscription = new Subscription();
         subscription.setCustomerId(request.getCustomerId());
         subscription.setOfferId(request.getOfferId());

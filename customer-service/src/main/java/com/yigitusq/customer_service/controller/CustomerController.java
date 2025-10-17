@@ -8,6 +8,7 @@ import com.yigitusq.customer_service.service.CustomerService;
 import org.springframework.beans.factory.annotation.Autowired;
 //import org.springframework.http.HttpStatus;
 //import org.springframework.http.ResponseEntity;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.http.MediaType;
 
@@ -28,6 +29,12 @@ public class CustomerController {
     @GetMapping
     public List<DtoCustomer> getAll(){
         return customerService.findAll();
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<DtoCustomer> getCustomerById(@PathVariable Long id) {
+        DtoCustomer customerDto = customerService.findById(id);
+        return ResponseEntity.ok(customerDto);
     }
 
 //    @PostMapping
