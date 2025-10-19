@@ -1,16 +1,18 @@
-package com.yigitusq.payment_service.dto;
+package com.yigitusq.subscription_service.event.dto;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.math.BigDecimal;
+
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class PaymentStatusEvent {
+public class PaymentRequestEvent {
     private Long subscriptionId;
-    private PaymentStatus status;
-    private String transactionId;
+    private Long customerId;
+    private BigDecimal amount;
 }

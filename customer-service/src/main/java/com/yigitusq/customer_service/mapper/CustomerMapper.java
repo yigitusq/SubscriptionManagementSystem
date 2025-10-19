@@ -20,4 +20,5 @@ public interface CustomerMapper {
     @Mapping(target = "createdAt", ignore = true)
     @Mapping(target = "updatedAt", ignore = true)
     Customer toEntity(DtoCustomerIU dtoCustomerIU);
+
 }

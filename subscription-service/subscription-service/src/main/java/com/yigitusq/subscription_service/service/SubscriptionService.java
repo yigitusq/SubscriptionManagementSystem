@@ -1,28 +1,26 @@
 package com.yigitusq.subscription_service.service;
 
 
+import com.yigitusq.subscription_service.client.CustomerServiceClient;
 import com.yigitusq.subscription_service.dto.CreateSubscriptionRequest;
 import com.yigitusq.subscription_service.dto.SubscriptionResponse;
 import com.yigitusq.subscription_service.dto.UpdateStatusRequest;
+import com.yigitusq.subscription_service.event.SubscriptionEventProducer;
+import com.yigitusq.subscription_service.event.dto.PaymentRequestEvent;
+import com.yigitusq.subscription_service.event.dto.PaymentStatusEvent;
 import com.yigitusq.subscription_service.mapper.SubscriptionMapper;
 import com.yigitusq.subscription_service.model.Offer;
 import com.yigitusq.subscription_service.model.Period;
 import com.yigitusq.subscription_service.model.Subscription;
 import com.yigitusq.subscription_service.model.SubscriptionStatus;
-import com.yigitusq.subscription_service.repository.CustomerRepository;
 import com.yigitusq.subscription_service.repository.OfferRepository;
 import com.yigitusq.subscription_service.repository.SubscriptionRepository;
+import feign.FeignException;
 import lombok.RequiredArgsConstructor;
-import org.mapstruct.Mapper;
-import org.mapstruct.factory.Mappers;
-import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.util.List;
-
-import com.yigitusq.subscription_service.client.CustomerServiceClient; // Yeni Feign Client'ı import et
-import feign.FeignException; // Feign'in kendi exception sınıfı
 
 @Service
 @RequiredArgsConstructor
@@ -32,41 +30,62 @@ public class SubscriptionService {
     private final OfferRepository offerRepository;
     private final CustomerServiceClient customerServiceClient;
     private final SubscriptionMapper subscriptionMapper;
+    private final SubscriptionEventProducer eventProducer; // Yeni Producer
 
     public SubscriptionResponse createSubscription(CreateSubscriptionRequest request) {
+        // 1. Müşteri var mı diye kontrol et
         try {
             customerServiceClient.getCustomerById(request.getCustomerId());
         } catch (FeignException.NotFound ex) {
             throw new RuntimeException("Abonelik oluşturulamaz: Müşteri bulunamadı - id: " + request.getCustomerId());
         }
 
+        // 2. Teklifi bul
         Offer offer = offerRepository.findById(request.getOfferId())
                 .orElseThrow(() -> new RuntimeException("Teklif bulunamadı: " + request.getOfferId()));
 
+        // 3. Aboneliği oluştur ve PENDING olarak kaydet
         Subscription subscription = subscriptionMapper.toEntity(request);
-        subscription.setStatus(SubscriptionStatus.ACTIVE);
+        subscription.setStatus(SubscriptionStatus.WAITINGFORPAYMENT); // << DEĞİŞİKLİK: Başlangıç durumu PENDING
 
         LocalDateTime now = LocalDateTime.now();
-        if(offer.getPeriod() == Period.MONTHLY){
+        if (offer.getPeriod() == Period.MONTHLY) {
             subscription.setRenewDate(now.plusMonths(1));
-        }
-        else if(offer.getPeriod() == Period.ANNUALLY){
+        } else if (offer.getPeriod() == Period.ANNUALLY) {
             subscription.setRenewDate(now.plusYears(1));
         }
 
         Subscription savedSubscription = subscriptionRepository.save(subscription);
+
+        // 4. Kafka'ya ödeme isteği gönder
+        PaymentRequestEvent event = PaymentRequestEvent.builder()
+                .subscriptionId(savedSubscription.getId())
+                .customerId(savedSubscription.getCustomerId())
+                .amount(offer.getPrice())
+                .build();
+        eventProducer.sendPaymentRequest(event);
+
         return subscriptionMapper.toResponse(savedSubscription);
     }
 
-    public SubscriptionResponse getSubscriptionById(Long id) {
-        Subscription subscription = subscriptionRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Subscription not found. Id: " + id));
-        return subscriptionMapper.toResponse(subscription);
-    }
+    public void updateSubscriptionStatusFromEvent(PaymentStatusEvent statusEvent) {
+        Subscription subscription = subscriptionRepository.findById(statusEvent.getSubscriptionId())
+                .orElse(null);
 
-    public List<SubscriptionResponse> getAllSubscriptions() {
-        List<Subscription> subscriptions = subscriptionRepository.findAll();
-        return subscriptionMapper.toResponseList(subscriptions);
+        if (subscription == null) {
+            return;
+        }
+
+        switch (statusEvent.getStatus()) {
+            case PAYMENT_SUCCESS:
+                subscription.setStatus(SubscriptionStatus.ACTIVE);
+                break;
+            case PAYMENT_FAILED:
+                subscription.setStatus(SubscriptionStatus.CANCELLED);
+                break;
+        }
+        subscription.setUpdatedAt(LocalDateTime.now());
+        subscriptionRepository.save(subscription);
     }
 
     public SubscriptionResponse updateStatus(Long id, UpdateStatusRequest request) {
@@ -79,6 +98,18 @@ public class SubscriptionService {
         Subscription updatedSubscription = subscriptionRepository.save(subscription);
         return subscriptionMapper.toResponse(updatedSubscription);
     }
+    public SubscriptionResponse getSubscriptionById(Long id) {
+        Subscription subscription = subscriptionRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Subscription not found. Id: " + id));
+        return subscriptionMapper.toResponse(subscription);
+    }
+
+    public List<SubscriptionResponse> getAllSubscriptions() {
+        List<Subscription> subscriptions = subscriptionRepository.findAll();
+        return subscriptionMapper.toResponseList(subscriptions);
+    }
+
+
 
     public void deleteSubscription(Long id) {
         if (!subscriptionRepository.existsById(id)) {

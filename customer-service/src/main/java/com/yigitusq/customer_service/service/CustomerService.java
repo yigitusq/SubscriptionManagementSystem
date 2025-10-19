@@ -51,4 +51,14 @@ public class CustomerService {
 
         return customerMapper.toDto(dbCustomer);
     }
+
+    public void deleteById(Long id) {
+        Customer customer = customerRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Customer not found - id: " + id));
+
+        customer.setStatus("INACTIVE");
+        customerRepository.save(customer);
+
+        //kafkaTemplate.send("customer-events-deleted", customer);
+    }
 }

@@ -14,11 +14,9 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-                // Kural 1: Gelen HERHANGİ BİR isteğe kimlik sormadan İZİN VER.
                 .authorizeHttpRequests(auth -> auth
                         .anyRequest().permitAll()
                 )
-                // Kural 2: CSRF korumasını kapat (REST API'ler için standarttır).
                 .csrf(AbstractHttpConfigurer::disable);
 
         return http.build();

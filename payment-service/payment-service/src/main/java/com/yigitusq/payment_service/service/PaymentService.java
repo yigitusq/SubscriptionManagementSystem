@@ -25,20 +25,17 @@ public class PaymentService {
     public void processPayment(PaymentRequestEvent requestEvent) {
         log.info("Ödeme isteği alındı: SubscriptionId={}", requestEvent.getSubscriptionId());
 
-        // Ödeme işlemini simüle et: %50 başarı, %50 başarısızlık
         boolean isSuccess = random.nextBoolean();
 
         PaymentStatus status = isSuccess ? PaymentStatus.PAYMENT_SUCCESS : PaymentStatus.PAYMENT_FAILED;
         log.info("Ödeme sonucu: {}", status);
 
-        // Sonuç event'ini oluştur
         PaymentStatusEvent statusEvent = PaymentStatusEvent.builder()
                 .subscriptionId(requestEvent.getSubscriptionId())
                 .status(status)
                 .transactionId(UUID.randomUUID().toString()) // Rastgele bir transaction ID
                 .build();
 
-        // Sonucu Kafka'ya gönder
         paymentEventProducer.sendStatusEvent(statusEvent);
     }
 }

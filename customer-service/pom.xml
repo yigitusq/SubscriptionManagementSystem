@@ -99,7 +99,6 @@
 
 	<build>
 		<plugins>
-			<!-- Bu Spring Boot Plugin'i kalacak -->
 			<plugin>
 				<groupId>org.springframework.boot</groupId>
 				<artifactId>spring-boot-maven-plugin</artifactId>
@@ -113,7 +112,6 @@
 				</configuration>
 			</plugin>
 
-			<!-- SADECE BU maven-compiler-plugin kalmalı! Diğerini SİL. -->
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-compiler-plugin</artifactId>

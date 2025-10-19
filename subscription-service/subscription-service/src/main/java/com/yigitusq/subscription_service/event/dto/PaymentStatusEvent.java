@@ -1,4 +1,4 @@
-package com.yigitusq.payment_service.dto;
+package com.yigitusq.subscription_service.event.dto;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
