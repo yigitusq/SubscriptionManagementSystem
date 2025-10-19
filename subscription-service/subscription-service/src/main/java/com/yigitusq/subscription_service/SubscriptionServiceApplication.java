@@ -7,7 +7,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 
 @SpringBootApplication
 @EnableScheduling
-@EnableFeignClients // BU ANOTASYONU EKLE
+@EnableFeignClients(basePackages = "com.yigitusq.subscription_service.client")
 public class SubscriptionServiceApplication {
 
 	public static void main(String[] args) {
