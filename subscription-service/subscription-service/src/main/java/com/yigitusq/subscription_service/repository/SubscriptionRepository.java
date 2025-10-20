@@ -9,5 +9,5 @@ import java.util.List;
 public interface SubscriptionRepository extends JpaRepository<Subscription, Long> {
     // Zamanlanmış görevin kullanacağı metot:
     // Yenileme tarihi geçmiş ve durumu ACTIVE olan tüm abonelikleri bulur.
-    List<Subscription> findByRenewDateBeforeAndStatus(LocalDateTime date, SubscriptionStatus status);
+    List<Subscription> findByStatusAndRenewDateBefore(SubscriptionStatus status, LocalDateTime now);
 }
