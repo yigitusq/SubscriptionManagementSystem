@@ -94,7 +94,6 @@ public class SubscriptionService {
                     subscription.setRenewDate(LocalDateTime.now().plusYears(1));
                 }
 
-                // --- YENİ BİLDİRİM GÖNDERME KISMI ---
                 sendSubscriptionStatusNotification(subscription, "Aboneliğiniz Başarıyla Aktif Edildi/Yenilendi");
                 break;
             case PAYMENT_FAILED:
@@ -107,7 +106,6 @@ public class SubscriptionService {
     }
     private void sendSubscriptionStatusNotification(Subscription subscription, String subject) {
         try {
-            // Bildirim göndermek için önce müşterinin email'ini almalıyız
             ResponseEntity<DtoCustomer> customerResponse = customerServiceClient.getCustomerById(subscription.getCustomerId());
             if (customerResponse.getStatusCode().is2xxSuccessful() && customerResponse.getBody() != null) {
                 DtoCustomer customer = customerResponse.getBody();

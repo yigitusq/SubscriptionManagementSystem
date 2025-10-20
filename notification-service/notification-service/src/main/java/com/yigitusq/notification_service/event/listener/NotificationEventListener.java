@@ -17,23 +17,19 @@ public class NotificationEventListener {
 
     private static final Logger log = LoggerFactory.getLogger(NotificationEventListener.class);
 
-    // JSON çevirisi için gerekli olan standart Spring aracı
     private final ObjectMapper objectMapper;
 
     public NotificationEventListener(ObjectMapper objectMapper) {
         this.objectMapper = objectMapper;
     }
 
-    // DEĞİŞİKLİK: Artık NotificationEvent değil, String bekliyoruz.
     @KafkaListener(topics = "${app.kafka.topic.notification}", groupId = "${spring.kafka.consumer.group-id}")
     public void handleNotificationEvent(String eventAsString) {
         log.info("Ham bildirim event'i (String) alındı: {}", eventAsString);
 
         try {
-            // Gelen düz metni (JSON String) manuel olarak NotificationEvent nesnesine çeviriyoruz.
             NotificationEvent event = objectMapper.readValue(eventAsString, NotificationEvent.class);
 
-            // Simülasyon çıktısı (eskisi gibi devam)
             System.out.println("==================================================");
             System.out.println("MAIL GÖNDERİLİYOR (Simülasyon)...");
             System.out.println("Alıcı: " + event.getEmail());

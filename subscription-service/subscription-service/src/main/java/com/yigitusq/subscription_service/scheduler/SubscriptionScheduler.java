@@ -44,7 +44,6 @@ public class SubscriptionScheduler {
 
         for (Subscription subscription : subscriptionsToRenew) {
             try {
-                // Her abonelik için bir ödeme isteği oluştur ve Kafka'ya gönder
                 Offer offer = offerRepository.findById(subscription.getOfferId()).orElseThrow();
 
                 PaymentRequestEvent event = PaymentRequestEvent.builder()
@@ -55,7 +54,6 @@ public class SubscriptionScheduler {
 
                 eventProducer.sendPaymentRequest(event);
 
-                // Ödeme sonucunu beklerken durumu güncelle ki tekrar tekrar işlenmesin
                 subscription.setStatus(SubscriptionStatus.WAITINGFORPAYMENT);
                 subscriptionRepository.save(subscription);
 

@@ -8,7 +8,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class NotificationEvent {
-    private String email; // mail adresi veya telefon numarası
-    private String subject; // "Hoş Geldiniz" veya "Aboneliğiniz Aktif"
-    private String message; // Gönderilecek mesaj içeriği
+    private String email;
+    private String subject;
+    private String message;
 }
