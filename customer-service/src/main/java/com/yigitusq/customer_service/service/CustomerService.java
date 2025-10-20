@@ -9,6 +9,8 @@ import com.yigitusq.customer_service.repository.CustomerRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.BeanUtils;
 //import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import com.yigitusq.customer_service.event.dto.NotificationEvent;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -24,6 +26,9 @@ public class CustomerService {
     private final KafkaTemplate<String, Object> kafkaTemplate;
     private final PasswordEncoder passwordEncoder;
     private final CustomerMapper customerMapper;
+
+    @Value("${app.kafka.topic.notification}")
+    private String notificationTopic;
 
     public DtoCustomer findById(Long id) {
 
@@ -48,6 +53,15 @@ public class CustomerService {
 
         System.out.println(dbCustomer.getId() + " ID'li müşteri için 'CustomerCreated' olayı gönderiliyor.");
         kafkaTemplate.send("customer-events", dbCustomer);
+
+        NotificationEvent notificationEvent = NotificationEvent.builder()
+                .to(dbCustomer.getEmail())
+                .subject("Aramıza Hoş Geldiniz!")
+                .message("Merhaba " + dbCustomer.getName() + ", hesabınız başarıyla oluşturuldu.")
+                .build();
+
+        System.out.println(dbCustomer.getEmail() + " adresine 'Hoş Geldin' bildirimi gönderiliyor.");
+        kafkaTemplate.send(notificationTopic, notificationEvent);
 
         return customerMapper.toDto(dbCustomer);
     }

@@ -18,5 +18,6 @@ public interface SubscriptionMapper {
     @Mapping(target = "createdAt", ignore = true)
     @Mapping(target = "updatedAt", ignore = true)
     Subscription toEntity(CreateSubscriptionRequest request);
+
     List<SubscriptionResponse> toResponseList(List<Subscription> subscriptions);
 }
