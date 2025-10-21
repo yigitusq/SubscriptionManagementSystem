@@ -10,4 +10,8 @@ public interface SubscriptionRepository extends JpaRepository<Subscription, Long
     // Zamanlanmış görevin kullanacağı metot:
     // Yenileme tarihi geçmiş ve durumu ACTIVE olan tüm abonelikleri bulur.
     List<Subscription> findByStatusAndRenewDateBefore(SubscriptionStatus status, LocalDateTime now);
+    
+    List<Subscription> findByCustomerId(Long customerId);
+    
+    Subscription findByIdAndCustomerId(Long id, Long customerId);
 }

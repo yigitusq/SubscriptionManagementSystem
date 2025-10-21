@@ -1,4 +1,4 @@
-package org.yigitusq.apigateway.util;
+package com.yigitusq.customer_service.util;
 
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
@@ -9,6 +9,8 @@ import org.springframework.stereotype.Component;
 import javax.crypto.SecretKey;
 import java.util.Base64;
 import java.util.Date;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.function.Function;
 
 @Component
@@ -20,6 +22,22 @@ public class JwtUtil {
     private SecretKey getKey() {
         byte[] keyBytes = Base64.getDecoder().decode(secret);
         return Keys.hmacShaKeyFor(keyBytes);
+    }
+
+    public String generateToken(String email, Long customerId) {
+        Map<String, Object> claims = new HashMap<>();
+        claims.put("customerId", customerId);
+        return createToken(claims, email);
+    }
+
+    private String createToken(Map<String, Object> claims, String subject) {
+        return Jwts.builder()
+                .claims(claims)
+                .subject(subject)
+                .issuedAt(new Date(System.currentTimeMillis()))
+                .expiration(new Date(System.currentTimeMillis() + 1000 * 60 * 60 * 10)) // 10 hours
+                .signWith(getKey())
+                .compact();
     }
 
     public String extractUsername(String token) {

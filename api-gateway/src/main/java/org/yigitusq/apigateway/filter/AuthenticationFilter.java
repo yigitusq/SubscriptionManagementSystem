@@ -44,6 +44,14 @@ public class AuthenticationFilter extends AbstractGatewayFilterFactory<Authentic
                 return onError(exchange, HttpStatus.UNAUTHORIZED);
             }
 
+            // Add customer ID to request headers for downstream services
+            Long customerId = jwtUtil.extractCustomerId(token);
+            if (customerId != null) {
+                exchange.getRequest().mutate()
+                        .header("X-Customer-ID", customerId.toString())
+                        .build();
+            }
+
             return chain.filter(exchange);
         };
     }

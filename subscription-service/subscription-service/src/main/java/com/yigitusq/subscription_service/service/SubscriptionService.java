@@ -128,8 +128,6 @@ public class SubscriptionService {
         }
     }
 
-    // ... updateStatus, getSubscriptionById, getAllSubscriptions, deleteSubscription metotları aynı kalıyor ...
-
     public SubscriptionResponse updateStatus(Long id, UpdateStatusRequest request) {
         Subscription subscription = subscriptionRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Subscription not found. Id: " + id));
@@ -140,6 +138,7 @@ public class SubscriptionService {
         Subscription updatedSubscription = subscriptionRepository.save(subscription);
         return subscriptionMapper.toResponse(updatedSubscription);
     }
+
     public SubscriptionResponse getSubscriptionById(Long id) {
         Subscription subscription = subscriptionRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Subscription not found. Id: " + id));
@@ -152,13 +151,13 @@ public class SubscriptionService {
     }
 
 
-
     public void deleteSubscription(Long id) {
         if (!subscriptionRepository.existsById(id)) {
             throw new RuntimeException("Subscription not found. Id: " + id);
         }
         subscriptionRepository.deleteById(id);
     }
+
 //    private SubscriptionResponse mapToResponse(Subscription subscription) {
 //        SubscriptionResponse response = new SubscriptionResponse();
 //

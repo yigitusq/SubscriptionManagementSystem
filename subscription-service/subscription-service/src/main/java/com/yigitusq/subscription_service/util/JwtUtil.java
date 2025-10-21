@@ -1,4 +1,4 @@
-package org.yigitusq.apigateway.util;
+package com.yigitusq.subscription_service.util;
 
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;

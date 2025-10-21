@@ -22,6 +22,13 @@ public class GatewayConfig {
                 .route("subscription-service", r -> r.path("/api/subscriptions/**")
                         .filters(f -> f.filter(filter.apply(new AuthenticationFilter.Config())))
                         .uri("lb://subscription-service"))
+                .route("payment-service", r -> r.path("/api/payments/**")
+                        .filters(f -> f.filter(filter.apply(new AuthenticationFilter.Config())))
+                        .uri("lb://payment-service"))
+
+                .route("notification-service", r -> r.path("/api/notifications/**")
+                        .filters(f -> f.filter(filter.apply(new AuthenticationFilter.Config())))
+                        .uri("lb://notification-service"))
 
                 .build();
     }
