@@ -52,6 +52,15 @@ services:
     ports:
       - "9411:9411"
 
+  redis:
+    image: redis:7-alpine
+    container_name: redis
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+
   # 2. MİKROSERVİSLER ----------------------------------
   discovery-service:
     build:
@@ -91,6 +100,7 @@ services:
       - discovery-service
       - postgres_db
       - kafka
+      - redis
 
   subscription-service:
     build:
@@ -105,6 +115,7 @@ services:
       - discovery-service
       - postgres_db
       - kafka
+      - redis
 
   payment-service:
     build:
@@ -119,6 +130,7 @@ services:
       - discovery-service
       - postgres_db
       - kafka
+      - redis
 
   notification-service:
     build:
@@ -133,7 +145,9 @@ services:
       - discovery-service
       - postgres_db
       - kafka
+      - redis
 
 
 volumes:
   postgres_data:
+  redis_data:
