@@ -16,6 +16,7 @@ import com.yigitusq.subscription_service.model.Subscription;
 import com.yigitusq.subscription_service.model.SubscriptionStatus;
 import com.yigitusq.subscription_service.repository.OfferRepository;
 import com.yigitusq.subscription_service.repository.SubscriptionRepository;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.kafka.core.KafkaTemplate;
@@ -23,10 +24,14 @@ import com.yigitusq.customer_service.dto.DtoCustomer;
 import feign.FeignException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
+import java.util.concurrent.Executor;
 
 import java.time.LocalDateTime;
 import java.util.List;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class SubscriptionService {
@@ -41,19 +46,45 @@ public class SubscriptionService {
     @Value("${app.kafka.topic.notification}")
     private String notificationTopic;
 
+    private final Executor taskExecutor;
+
     public SubscriptionResponse createSubscription(CreateSubscriptionRequest request) {
-        // 1. Müşteri var mı diye kontrol et
+        log.info("Subscription oluşturma işlemi başladı...");
+
+        // GÖREV 1: Müşteri kontrolünü asenkron olarak başlat
+        // (Bu görev bir sonuç döndürmez, sadece başarılıysa biter, başarısızsa hata fırlatır)
+        CompletableFuture<Void> customerCheckFuture = CompletableFuture.runAsync(() -> {
+            log.info("Async: Müşteri varlığı kontrol ediliyor (ID: {})...", request.getCustomerId());
+            try {
+                customerServiceClient.getCustomerById(request.getCustomerId());
+            } catch (FeignException.NotFound ex) {
+                // Hata fırlat ki ana thread bunu yakalasın
+                throw new CompletionException(new RuntimeException("Abonelik oluşturulamaz: Müşteri bulunamadı - id: " + request.getCustomerId()));
+            } catch (Exception e) {
+                throw new CompletionException(new RuntimeException("Müşteri servisiyle konuşurken hata oluştu: " + e.getMessage()));
+            }
+        }, taskExecutor);
+
+        CompletableFuture<Offer> offerFuture = CompletableFuture.supplyAsync(() -> {
+            log.info("Async: Teklif detayları getiriliyor (ID: {})...", request.getOfferId());
+            return offerRepository.findById(request.getOfferId())
+                    .orElseThrow(() -> new CompletionException(new RuntimeException("Teklif bulunamadı: " + request.getOfferId())));
+        }, taskExecutor);
+
         try {
-            customerServiceClient.getCustomerById(request.getCustomerId());
-        } catch (FeignException.NotFound ex) {
-            throw new RuntimeException("Abonelik oluşturulamaz: Müşteri bulunamadı - id: " + request.getCustomerId());
+            CompletableFuture.allOf(customerCheckFuture, offerFuture).join();
+        } catch (CompletionException e) {
+            // görevlerden biri başarısız olursa (Müşteri yoksa VEYA Teklif yoksa)
+            // hatayı yakala ve işlemi durdur.
+            log.error("Asenkron görevlerden biri başarısız oldu: {}", e.getCause().getMessage());
+            throw (RuntimeException) e.getCause();
         }
 
-        // 2. Teklifi bul
-        Offer offer = offerRepository.findById(request.getOfferId())
-                .orElseThrow(() -> new RuntimeException("Teklif bulunamadı: " + request.getOfferId()));
+        // her iki görev de başarıyla bittiyse buraya gelinir
+        log.info("Her iki asenkron görev de tamamlandı. Abonelik oluşturuluyor.");
 
-        // 3. Aboneliği oluştur ve PENDING olarak kaydet
+        Offer offer = offerFuture.join();
+
         Subscription subscription = subscriptionMapper.toEntity(request);
         subscription.setStatus(SubscriptionStatus.WAITINGFORPAYMENT); // << DEĞİŞİKLİK: Başlangıç durumu PENDING
 
@@ -94,11 +125,11 @@ public class SubscriptionService {
                     subscription.setRenewDate(LocalDateTime.now().plusYears(1));
                 }
 
-                sendSubscriptionStatusNotification(subscription, "Aboneliğiniz Başarıyla Aktif Edildi/Yenilendi");
+                sendSubscriptionStatusNotification(subscription, "Aboneliginiz Basariyla Aktif Edildi/Yenilendi");
                 break;
             case PAYMENT_FAILED:
                 subscription.setStatus(SubscriptionStatus.CANCELLED); // Veya PAYMENT_FAILED
-                sendSubscriptionStatusNotification(subscription, "Abonelik Ödemeniz Başarısız Oldu");
+                sendSubscriptionStatusNotification(subscription, "Abonelik Odemeniz Basarisiz Oldu");
                 break;
         }
         subscription.setUpdatedAt(LocalDateTime.now());
@@ -111,7 +142,7 @@ public class SubscriptionService {
                 DtoCustomer customer = customerResponse.getBody();
 
                 String message = "Merhaba " + customer.getName() + ",\n" +
-                        subscription.getId() + " numaralı aboneliğinizin durumu güncellenmiştir.\n" +
+                        subscription.getId() + " numarali aboneliginizin durumu guncellenmistir.\n" +
                         "Yeni Durum: " + subscription.getStatus();
 
                 NotificationEvent notificationEvent = NotificationEvent.builder()
@@ -124,7 +155,7 @@ public class SubscriptionService {
             }
         } catch (Exception e) {
             // Müşteri bulunamazsa veya başka bir hata olursa logla, ama sistemi durdurma.
-            System.err.println("Bildirim gönderilirken hata oluştu: " + e.getMessage());
+            System.err.println("Bildirim gonderilirken hata olustu: " + e.getMessage());
         }
     }
 
