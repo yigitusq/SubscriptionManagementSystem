@@ -46,5 +46,11 @@ services:
     depends_on:
       - postgres
 
+  zipkin:
+    image: openzipkin/zipkin
+    container_name: zipkin
+    ports:
+      - "9411:9411" # Zipkin arayüzü için standart port
+
 volumes:
   postgres_data:
