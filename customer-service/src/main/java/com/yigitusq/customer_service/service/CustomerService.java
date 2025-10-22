@@ -7,15 +7,17 @@ import com.yigitusq.customer_service.model.Customer;
 import com.yigitusq.customer_service.repository.CustomerRepository;
 //import lombok.RequiredArgsConstructor;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.BeanUtils;
+//import org.springframework.beans.BeanUtils;
 //import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import com.yigitusq.customer_service.event.dto.NotificationEvent;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
-import java.util.ArrayList;
+//import java.util.ArrayList;
 import java.util.List;
 
 @RequiredArgsConstructor
@@ -30,6 +32,7 @@ public class CustomerService {
     @Value("${app.kafka.topic.notification}")
     private String notificationTopic;
 
+    @Cacheable(value = "customers", key = "#id")
     public DtoCustomer findById(Long id) {
 
         Customer customer = customerRepository.findById(id)
@@ -38,11 +41,13 @@ public class CustomerService {
         return customerMapper.toDto(customer);
     }
 
+    @Cacheable(value = "customers", key = "'all'")
     public List<DtoCustomer> findAll() {
         List<Customer> customerList = customerRepository.findAll();
         return customerMapper.toDtoList(customerList);
     }
 
+    @CacheEvict(value = "customers", allEntries = true)
     public DtoCustomer save(DtoCustomerIU dtoCustomer) {
         Customer customer = customerMapper.toEntity(dtoCustomer);
 
@@ -66,6 +71,7 @@ public class CustomerService {
         return customerMapper.toDto(dbCustomer);
     }
 
+    @CacheEvict(value = "customers", allEntries = true)
     public void deleteById(Long id) {
         Customer customer = customerRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Customer not found - id: " + id));

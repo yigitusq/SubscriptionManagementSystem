@@ -7,6 +7,7 @@ import com.yigitusq.subscription_service.model.Subscription;
 import com.yigitusq.subscription_service.model.SubscriptionStatus;
 import com.yigitusq.subscription_service.repository.OfferRepository;
 import com.yigitusq.subscription_service.repository.SubscriptionRepository;
+import com.yigitusq.subscription_service.service.OfferService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -22,6 +23,7 @@ public class SubscriptionScheduler {
 
     private final SubscriptionRepository subscriptionRepository;
     private final OfferRepository offerRepository;
+    private final OfferService offerService;
     private final SubscriptionEventProducer eventProducer;
 
     /**
@@ -44,7 +46,7 @@ public class SubscriptionScheduler {
 
         for (Subscription subscription : subscriptionsToRenew) {
             try {
-                Offer offer = offerRepository.findById(subscription.getOfferId()).orElseThrow();
+                Offer offer = offerService.findById(subscription.getOfferId());
 
                 PaymentRequestEvent event = PaymentRequestEvent.builder()
                         .subscriptionId(subscription.getId())

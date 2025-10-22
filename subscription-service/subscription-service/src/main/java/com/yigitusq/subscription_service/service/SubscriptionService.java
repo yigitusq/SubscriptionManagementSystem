@@ -16,28 +16,26 @@ import com.yigitusq.subscription_service.model.Subscription;
 import com.yigitusq.subscription_service.model.SubscriptionStatus;
 import com.yigitusq.subscription_service.repository.OfferRepository;
 import com.yigitusq.subscription_service.repository.SubscriptionRepository;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.kafka.core.KafkaTemplate;
 import com.yigitusq.customer_service.dto.DtoCustomer;
 import feign.FeignException;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionException;
-import java.util.concurrent.Executor;
 
 import java.time.LocalDateTime;
 import java.util.List;
 
-@Slf4j
 @Service
 @RequiredArgsConstructor
 public class SubscriptionService {
 
     private final SubscriptionRepository subscriptionRepository;
     private final OfferRepository offerRepository;
+    private final OfferService offerService;
     private final CustomerServiceClient customerServiceClient;
     private final SubscriptionMapper subscriptionMapper;
     private final SubscriptionEventProducer eventProducer;
@@ -46,45 +44,19 @@ public class SubscriptionService {
     @Value("${app.kafka.topic.notification}")
     private String notificationTopic;
 
-    private final Executor taskExecutor;
-
+    @CacheEvict(value = "subscriptions", allEntries = true)
     public SubscriptionResponse createSubscription(CreateSubscriptionRequest request) {
-        log.info("Subscription oluşturma işlemi başladı...");
-
-        // GÖREV 1: Müşteri kontrolünü asenkron olarak başlat
-        // (Bu görev bir sonuç döndürmez, sadece başarılıysa biter, başarısızsa hata fırlatır)
-        CompletableFuture<Void> customerCheckFuture = CompletableFuture.runAsync(() -> {
-            log.info("Async: Müşteri varlığı kontrol ediliyor (ID: {})...", request.getCustomerId());
-            try {
-                customerServiceClient.getCustomerById(request.getCustomerId());
-            } catch (FeignException.NotFound ex) {
-                // Hata fırlat ki ana thread bunu yakalasın
-                throw new CompletionException(new RuntimeException("Abonelik oluşturulamaz: Müşteri bulunamadı - id: " + request.getCustomerId()));
-            } catch (Exception e) {
-                throw new CompletionException(new RuntimeException("Müşteri servisiyle konuşurken hata oluştu: " + e.getMessage()));
-            }
-        }, taskExecutor);
-
-        CompletableFuture<Offer> offerFuture = CompletableFuture.supplyAsync(() -> {
-            log.info("Async: Teklif detayları getiriliyor (ID: {})...", request.getOfferId());
-            return offerRepository.findById(request.getOfferId())
-                    .orElseThrow(() -> new CompletionException(new RuntimeException("Teklif bulunamadı: " + request.getOfferId())));
-        }, taskExecutor);
-
+        // 1. Müşteri var mı diye kontrol et
         try {
-            CompletableFuture.allOf(customerCheckFuture, offerFuture).join();
-        } catch (CompletionException e) {
-            // görevlerden biri başarısız olursa (Müşteri yoksa VEYA Teklif yoksa)
-            // hatayı yakala ve işlemi durdur.
-            log.error("Asenkron görevlerden biri başarısız oldu: {}", e.getCause().getMessage());
-            throw (RuntimeException) e.getCause();
+            customerServiceClient.getCustomerById(request.getCustomerId());
+        } catch (FeignException.NotFound ex) {
+            throw new RuntimeException("Abonelik oluşturulamaz: Müşteri bulunamadı - id: " + request.getCustomerId());
         }
 
-        // her iki görev de başarıyla bittiyse buraya gelinir
-        log.info("Her iki asenkron görev de tamamlandı. Abonelik oluşturuluyor.");
+        // 2. Teklifi bul
+        Offer offer = offerService.findById(request.getOfferId());
 
-        Offer offer = offerFuture.join();
-
+        // 3. Aboneliği oluştur ve PENDING olarak kaydet
         Subscription subscription = subscriptionMapper.toEntity(request);
         subscription.setStatus(SubscriptionStatus.WAITINGFORPAYMENT); // << DEĞİŞİKLİK: Başlangıç durumu PENDING
 
@@ -118,18 +90,18 @@ public class SubscriptionService {
             case PAYMENT_SUCCESS:
                 subscription.setStatus(SubscriptionStatus.ACTIVE);
                 // Başarılı ödeme sonrası bir sonraki yenileme tarihini güncelle
-                Offer offer = offerRepository.findById(subscription.getOfferId()).orElseThrow();
+                Offer offer = offerService.findById(subscription.getOfferId());
                 if (offer.getPeriod() == Period.MONTHLY) {
                     subscription.setRenewDate(LocalDateTime.now().plusMonths(1));
                 } else if (offer.getPeriod() == Period.ANNUALLY) {
                     subscription.setRenewDate(LocalDateTime.now().plusYears(1));
                 }
 
-                sendSubscriptionStatusNotification(subscription, "Aboneliginiz Basariyla Aktif Edildi/Yenilendi");
+                sendSubscriptionStatusNotification(subscription, "Aboneliğiniz Başarıyla Aktif Edildi/Yenilendi");
                 break;
             case PAYMENT_FAILED:
                 subscription.setStatus(SubscriptionStatus.CANCELLED); // Veya PAYMENT_FAILED
-                sendSubscriptionStatusNotification(subscription, "Abonelik Odemeniz Basarisiz Oldu");
+                sendSubscriptionStatusNotification(subscription, "Abonelik Ödemeniz Başarısız Oldu");
                 break;
         }
         subscription.setUpdatedAt(LocalDateTime.now());
@@ -142,7 +114,7 @@ public class SubscriptionService {
                 DtoCustomer customer = customerResponse.getBody();
 
                 String message = "Merhaba " + customer.getName() + ",\n" +
-                        subscription.getId() + " numarali aboneliginizin durumu guncellenmistir.\n" +
+                        subscription.getId() + " numaralı aboneliğinizin durumu güncellenmiştir.\n" +
                         "Yeni Durum: " + subscription.getStatus();
 
                 NotificationEvent notificationEvent = NotificationEvent.builder()
@@ -155,10 +127,13 @@ public class SubscriptionService {
             }
         } catch (Exception e) {
             // Müşteri bulunamazsa veya başka bir hata olursa logla, ama sistemi durdurma.
-            System.err.println("Bildirim gonderilirken hata olustu: " + e.getMessage());
+            System.err.println("Bildirim gönderilirken hata oluştu: " + e.getMessage());
         }
     }
 
+    // ... updateStatus, getSubscriptionById, getAllSubscriptions, deleteSubscription metotları aynı kalıyor ...
+
+    @CacheEvict(value = "subscriptions", allEntries = true)
     public SubscriptionResponse updateStatus(Long id, UpdateStatusRequest request) {
         Subscription subscription = subscriptionRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Subscription not found. Id: " + id));
@@ -169,26 +144,28 @@ public class SubscriptionService {
         Subscription updatedSubscription = subscriptionRepository.save(subscription);
         return subscriptionMapper.toResponse(updatedSubscription);
     }
-
+    @Cacheable(value = "subscriptions", key = "#id")
     public SubscriptionResponse getSubscriptionById(Long id) {
         Subscription subscription = subscriptionRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Subscription not found. Id: " + id));
         return subscriptionMapper.toResponse(subscription);
     }
 
+    @Cacheable(value = "subscriptions", key = "'all'")
     public List<SubscriptionResponse> getAllSubscriptions() {
         List<Subscription> subscriptions = subscriptionRepository.findAll();
         return subscriptionMapper.toResponseList(subscriptions);
     }
 
 
+
+    @CacheEvict(value = "subscriptions", allEntries = true)
     public void deleteSubscription(Long id) {
         if (!subscriptionRepository.existsById(id)) {
             throw new RuntimeException("Subscription not found. Id: " + id);
         }
         subscriptionRepository.deleteById(id);
     }
-
 //    private SubscriptionResponse mapToResponse(Subscription subscription) {
 //        SubscriptionResponse response = new SubscriptionResponse();
 //
