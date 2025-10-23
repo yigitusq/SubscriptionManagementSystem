@@ -39,3 +39,5 @@ public class OfferService {
         offerRepository.deleteById(id);
     }
 }
+
+

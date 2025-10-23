@@ -12,7 +12,9 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import com.yigitusq.customer_service.event.dto.NotificationEvent;
 import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.CachePut;
 import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.Caching;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -47,8 +49,15 @@ public class CustomerService {
         return customerMapper.toDtoList(customerList);
     }
 
-    @CacheEvict(value = "customers", allEntries = true)
-    public DtoCustomer save(DtoCustomerIU dtoCustomer) {
+    @Caching(
+            put = {
+                    @CachePut(value = "customers", key = "#result.id")
+            },
+            evict = {
+                    @CacheEvict(value = "customers", key = "'all'")
+            }
+    )
+     public DtoCustomer save(DtoCustomerIU dtoCustomer) {
         Customer customer = customerMapper.toEntity(dtoCustomer);
 
         String hashedPassword = passwordEncoder.encode(dtoCustomer.getPassword());
@@ -71,7 +80,7 @@ public class CustomerService {
         return customerMapper.toDto(dbCustomer);
     }
 
-    @CacheEvict(value = "customers", allEntries = true)
+    @CacheEvict(value = "customers", key = "#id")
     public void deleteById(Long id) {
         Customer customer = customerRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Customer not found - id: " + id));

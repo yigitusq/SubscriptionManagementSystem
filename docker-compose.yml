@@ -12,6 +12,8 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    networks:
+      - customer-service-network
 
   zookeeper:
     image: confluentinc/cp-zookeeper:7.5.3
@@ -19,6 +21,8 @@ services:
     environment:
       ZOOKEEPER_CLIENT_PORT: 2181
       ZOOKEEPER_TICK_TIME: 2000
+    networks:
+      - customer-service-network
 
   kafka:
     image: confluentinc/cp-kafka:7.5.3
@@ -34,6 +38,8 @@ services:
       KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092,PLAINTEXT_INTERNAL://kafka:29092
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
       KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+    networks:
+      - customer-service-network
 
   pgadmin:
     image: dpage/pgadmin4
@@ -45,12 +51,16 @@ services:
       - "5050:80"
     depends_on:
       - postgres_db
+    networks:
+      - customer-service-network
 
   zipkin:
     image: openzipkin/zipkin
     container_name: zipkin
     ports:
       - "9411:9411"
+    networks:
+      - customer-service-network
 
   redis:
     image: redis:7-alpine
@@ -60,6 +70,8 @@ services:
     command: redis-server --appendonly yes
     volumes:
       - redis_data:/data
+    networks:
+      - customer-service-network
 
   # 2. MİKROSERVİSLER ----------------------------------
   discovery-service:
@@ -69,11 +81,10 @@ services:
     container_name: discovery-service
     ports:
       - "8761:8761"
-    environment:
-      - SPRING_PROFILES_ACTIVE=docker
     depends_on:
       - postgres_db
-
+    networks:
+      - customer-service-network
   api-gateway:
     build:
       context: .
@@ -81,12 +92,11 @@ services:
     container_name: api-gateway
     ports:
       - "8080:8080"
-    environment:
-      - SPRING_PROFILES_ACTIVE=docker
     depends_on:
       - discovery-service
       - postgres_db
-
+    networks:
+      - customer-service-network
   customer-service:
     build:
       context: .
@@ -94,14 +104,13 @@ services:
     container_name: customer-service
     ports:
       - "8081:8081"
-    environment:
-      - SPRING_PROFILES_ACTIVE=docker
     depends_on:
       - discovery-service
       - postgres_db
       - kafka
       - redis
-
+    networks:
+      - customer-service-network
   subscription-service:
     build:
       context: .
@@ -109,14 +118,13 @@ services:
     container_name: subscription-service
     ports:
       - "8082:8082"
-    environment:
-      - SPRING_PROFILES_ACTIVE=docker
     depends_on:
       - discovery-service
       - postgres_db
       - kafka
       - redis
-
+    networks:
+      - customer-service-network
   payment-service:
     build:
       context: .
@@ -124,14 +132,13 @@ services:
     container_name: payment-service
     ports:
       - "8083:8083"
-    environment:
-      - SPRING_PROFILES_ACTIVE=docker
     depends_on:
       - discovery-service
       - postgres_db
       - kafka
       - redis
-
+    networks:
+      - customer-service-network
   notification-service:
     build:
       context: .
@@ -139,15 +146,19 @@ services:
     container_name: notification-service
     ports:
       - "8084:8084"
-    environment:
-      - SPRING_PROFILES_ACTIVE=docker
     depends_on:
       - discovery-service
       - postgres_db
       - kafka
       - redis
+    networks:
+      - customer-service-network
 
 
 volumes:
   postgres_data:
   redis_data:
+
+networks:
+  customer-service-network:
+    driver: bridge
