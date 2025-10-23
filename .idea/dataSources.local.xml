@@ -29,5 +29,23 @@
         </introspection-scope>
       </schema-mapping>
     </data-source>
+    <data-source name="0@redis" uuid="699144e2-72cb-4c67-8636-d4aff6e1fbc5">
+      <database-info product="" version="" jdbc-version="" driver-name="" driver-version="" dbms="REDIS" />
+      <schema-mapping />
+    </data-source>
+    <data-source name="0@redis" uuid="1fbf92ea-d4ae-43f4-a64b-4360f4928efd">
+      <database-info product="" version="" jdbc-version="" driver-name="" driver-version="" dbms="REDIS" />
+      <schema-mapping />
+    </data-source>
+    <data-source name="postgres" uuid="2338fe77-9738-484a-aa80-7065c04a2e10">
+      <database-info product="" version="" jdbc-version="" driver-name="" driver-version="" dbms="POSTGRES" />
+      <user-name>postgres</user-name>
+      <schema-mapping />
+    </data-source>
+    <data-source name="postgres" uuid="e5b63573-9399-4eea-95f2-c5bc0e94b64e">
+      <database-info product="" version="" jdbc-version="" driver-name="" driver-version="" dbms="POSTGRES" />
+      <user-name>postgres</user-name>
+      <schema-mapping />
+    </data-source>
   </component>
 </project>

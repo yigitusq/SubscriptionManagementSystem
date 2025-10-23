@@ -126,12 +126,9 @@ public class SubscriptionService {
                 kafkaTemplate.send(notificationTopic, notificationEvent);
             }
         } catch (Exception e) {
-            // Müşteri bulunamazsa veya başka bir hata olursa logla, ama sistemi durdurma.
-            System.err.println("Bildirim gönderilirken hata oluştu: " + e.getMessage());
+            System.err.println("Bildirim gonderilirken hata olustu: " + e.getMessage());
         }
     }
-
-    // ... updateStatus, getSubscriptionById, getAllSubscriptions, deleteSubscription metotları aynı kalıyor ...
 
     @CacheEvict(value = "subscriptions", allEntries = true)
     public SubscriptionResponse updateStatus(Long id, UpdateStatusRequest request) {
@@ -156,8 +153,6 @@ public class SubscriptionService {
         List<Subscription> subscriptions = subscriptionRepository.findAll();
         return subscriptionMapper.toResponseList(subscriptions);
     }
-
-
 
     @CacheEvict(value = "subscriptions", allEntries = true)
     public void deleteSubscription(Long id) {
