@@ -29,7 +29,6 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/customers/**").permitAll()
                         .anyRequest().authenticated()
                 );
-
         return http.build();
     }
 
