@@ -4,6 +4,7 @@ import com.yigitusq.subscription_service.dto.CreateSubscriptionRequest;
 import com.yigitusq.subscription_service.dto.SubscriptionResponse;
 import com.yigitusq.subscription_service.dto.UpdateStatusRequest;
 import com.yigitusq.subscription_service.service.SubscriptionService;
+import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -19,11 +20,13 @@ public class SubscriptionController {
     public SubscriptionController(SubscriptionService subscriptionService) {
         this.subscriptionService = subscriptionService;
     }
+
     @GetMapping("/{id}")
     public ResponseEntity<SubscriptionResponse> getSubscriptionById(@PathVariable Long id) {
         SubscriptionResponse response = subscriptionService.getSubscriptionById(id);
         return ResponseEntity.ok(response);
     }
+
     @GetMapping
     public ResponseEntity<List<SubscriptionResponse>> getAllSubscriptions() {
         List<SubscriptionResponse> responses = subscriptionService.getAllSubscriptions();
@@ -31,13 +34,16 @@ public class SubscriptionController {
     }
 
     @PostMapping
-    public ResponseEntity<SubscriptionResponse> createSubscription(@RequestBody CreateSubscriptionRequest request) {
+    public ResponseEntity<SubscriptionResponse> createSubscription(
+            @Valid @RequestBody CreateSubscriptionRequest request) {
         SubscriptionResponse response = subscriptionService.createSubscription(request);
         return new ResponseEntity<>(response, HttpStatus.CREATED);
     }
 
     @PatchMapping("/{id}/status")
-    public ResponseEntity<SubscriptionResponse> updateStatus(@PathVariable Long id, @RequestBody UpdateStatusRequest request) {
+    public ResponseEntity<SubscriptionResponse> updateStatus(
+            @PathVariable Long id,
+            @Valid @RequestBody UpdateStatusRequest request) {
         SubscriptionResponse response = subscriptionService.updateStatus(id, request);
         return ResponseEntity.ok(response);
     }
