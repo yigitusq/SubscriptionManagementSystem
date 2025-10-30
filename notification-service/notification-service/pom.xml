@@ -65,6 +65,7 @@
 			<artifactId>spring-kafka-test</artifactId>
 			<scope>test</scope>
 		</dependency>
+
 	</dependencies>
 	<dependencyManagement>
 		<dependencies>
@@ -89,7 +90,9 @@
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-starter-actuator</artifactId>
             </dependency>
+
 		</dependencies>
+
 	</dependencyManagement>
 
 	<build>
