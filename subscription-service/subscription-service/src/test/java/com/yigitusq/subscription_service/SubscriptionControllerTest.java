@@ -1,6 +1,8 @@
 package com.yigitusq.subscription_service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature; // Gerekli import
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule; // Gerekli import
 import com.yigitusq.subscription_service.controller.SubscriptionController;
 import com.yigitusq.subscription_service.dto.CreateSubscriptionRequest;
 import com.yigitusq.subscription_service.dto.SubscriptionResponse;
@@ -10,15 +12,26 @@ import com.yigitusq.subscription_service.service.SubscriptionService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-// @Mock anotasyonu Mockito'dan geliyordu, ona artık gerek yok.
+import org.junit.jupiter.api.extension.ExtendWith; // Gerekli import
+import org.mockito.InjectMocks; // Gerekli import
 import org.mockito.Mock;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.mockito.junit.jupiter.MockitoExtension; // Gerekli import
+// import org.springframework.beans.factory.annotation.Autowired; // Artık Spring context'i yok
+import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest; // KALDIRILDI
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.setup.MockMvcBuilders; // Gerekli import
+import static org.assertj.core.api.Assertions.assertThat;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.ServletException;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.List;
+
 
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.is;
@@ -28,24 +41,40 @@ import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
-@WebMvcTest(SubscriptionController.class)
+// @WebMvcTest(SubscriptionController.class) // <-- KALDIRILDI. Spring context'i yüklemeyeceğiz.
+@ExtendWith(MockitoExtension.class) // <-- Mockito'yu etkinleştirmek için EKLENDİ.
 @DisplayName("Subscription Controller Tests")
 class SubscriptionControllerTest {
 
-    @Autowired
+    // @Autowired // <-- Artık Spring tarafından enjekte edilmiyor.
     private MockMvc mockMvc;
 
-    @Autowired
+    // @Autowired // <-- Artık Spring tarafından enjekte edilmiyor.
     private ObjectMapper objectMapper;
 
-    @Mock // <-- @Mock'tan @MockBean'e DEĞİŞTİRİLDİ
+    @Mock // <-- Bu sahte (mock) nesne
     private SubscriptionService subscriptionService;
+
+    @InjectMocks // <-- Mockito'ya subscriptionService'i bu controller'a enjekte etmesini söyler
+    private SubscriptionController subscriptionController;
 
     private SubscriptionResponse subscriptionResponse;
     private CreateSubscriptionRequest createRequest;
 
     @BeforeEach
     void setUp() {
+        // MockMvc'yi Spring context olmadan, manuel olarak kuruyoruz.
+        mockMvc = MockMvcBuilders.standaloneSetup(subscriptionController)
+                // .setControllerAdvice(new GlobalExceptionHandler()) // Gerekirse exception handler'ınızı buraya ekleyebilirsiniz
+                .build();
+
+        // ObjectMapper'ı manuel olarak oluşturuyoruz (LocalDateTime'ı işlemesi için)
+        objectMapper = new ObjectMapper();
+        objectMapper.registerModule(new JavaTimeModule());
+        objectMapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
+
+
+        // --- Test verileriniz aynı kalıyor ---
         subscriptionResponse = new SubscriptionResponse();
         subscriptionResponse.setId(1L);
         subscriptionResponse.setCustomerId(1L);
@@ -125,7 +154,7 @@ class SubscriptionControllerTest {
         mockMvc.perform(post("/api/subscriptions")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(createRequest)))
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isBadRequest()); // <-- Bu test, standalone modda doğrulama (validation) yapılandırmanıza bağlıdır.
 
         verify(subscriptionService, never()).createSubscription(any());
     }
@@ -140,7 +169,7 @@ class SubscriptionControllerTest {
         mockMvc.perform(post("/api/subscriptions")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(createRequest)))
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isBadRequest()); // <-- Bu test de doğrulama yapılandırmasına bağlıdır.
 
         verify(subscriptionService, never()).createSubscription(any());
     }
@@ -185,19 +214,27 @@ class SubscriptionControllerTest {
     @DisplayName("GET /api/subscriptions/{id} - Not Found")
     void testGetSubscriptionById_NotFound() throws Exception {
         // Given
-        when(subscriptionService.getSubscriptionById(anyLong()))
+        when(subscriptionService.getSubscriptionById(999L))
                 .thenThrow(new RuntimeException("Subscription not found. Id: 999"));
 
         // When & Then
-        // NOT: @WebMvcTest genellikle global exception handler'ı YÜKLEMEZ.
-        // Eğer bir @ControllerAdvice @ExceptionHandler'ınız varsa, bu 500 dönebilir.
-        // Eğer yoksa ve sadece controller'dan hata fırlatılıyorsa,
-        // bu beklendiği gibi çalışacaktır.
-        // Şimdilik 500 (Internal Server Error) beklemek mantıklı.
-        mockMvc.perform(get("/api/subscriptions/999")
-                        .contentType(MediaType.APPLICATION_JSON))
-                .andExpect(status().isInternalServerError());
+        // perform() çağrısının kendisinin bir ServletException fırlatmasını bekliyoruz.
+        ServletException exception = assertThrows(ServletException.class, () -> {
+            // perform() çağrısını bu lambda ifadesinin içine taşıyın
+            mockMvc.perform(get("/api/subscriptions/999")
+                    .contentType(MediaType.APPLICATION_JSON));
+        });
 
+        Throwable rootCause = exception.getCause();
+
+        // 2. Asıl sebebin bizim fırlattığımız RuntimeException olduğunu doğrulayın
+        assertNotNull(rootCause, "ServletException'in bir sebebi olmalı (cause)");
+        assertTrue(rootCause instanceof RuntimeException, "Asıl sebep RuntimeException olmalı");
+
+        // 3. Hata mesajının beklediğimiz gibi olduğunu doğrulayın
+        assertEquals("Subscription not found. Id: 999", rootCause.getMessage());
+
+        // 4. Mock'un yine de çağrıldığını doğrulayın
         verify(subscriptionService, times(1)).getSubscriptionById(999L);
     }
 }

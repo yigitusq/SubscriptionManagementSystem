@@ -58,7 +58,7 @@ public class SubscriptionService {
 
         // 3. Aboneliği oluştur ve PENDING olarak kaydet
         Subscription subscription = subscriptionMapper.toEntity(request);
-        subscription.setStatus(SubscriptionStatus.WAITINGFORPAYMENT); // << DEĞİŞİKLİK: Başlangıç durumu PENDING
+        subscription.setStatus(SubscriptionStatus.WAITINGFORPAYMENT);
 
         LocalDateTime now = LocalDateTime.now();
         if (offer.getPeriod() == Period.MONTHLY) {
