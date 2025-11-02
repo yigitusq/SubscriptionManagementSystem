@@ -7,11 +7,13 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 @Configuration
-@RequiredArgsConstructor
 public class GatewayConfig {
 
     private final AuthenticationFilter filter;
 
+    public GatewayConfig(AuthenticationFilter filter) {
+        this.filter = filter;
+    }
     @Bean
     public RouteLocator routes(RouteLocatorBuilder builder) {
         return builder.routes()
