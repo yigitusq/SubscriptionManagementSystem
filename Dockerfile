@@ -21,6 +21,6 @@ FROM eclipse-temurin:17-jre-focal
 WORKDIR /app
 
 ARG JAR_FILE
-COPY --from=builder /app/customer-service/target/customer-service.jar /app/app.jar
+COPY --from=builder /app/customer-service/target/*.jar /app/app.jar
 
 ENTRYPOINT ["java", "-jar", "/app/app.jar"]
