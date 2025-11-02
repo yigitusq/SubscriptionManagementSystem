@@ -11,7 +11,6 @@ COPY customer-service/pom.xml ./customer-service/
 COPY subscription-service/pom.xml ./subscription-service/
 COPY payment-service/pom.xml ./payment-service/
 COPY notification-service/pom.xml ./notification-service/
-COPY common-dto/pom.xml ./common-dto/
 # BENİM HATAM BURADAYDI, DÜZELTİLDİ ("discovery-server" -> "discovery-service")
 COPY discovery-service/pom.xml ./discovery-service/
 
