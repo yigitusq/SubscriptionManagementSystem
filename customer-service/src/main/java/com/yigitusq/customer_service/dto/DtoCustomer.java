@@ -7,7 +7,7 @@ import lombok.NoArgsConstructor;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class DtoCustomer {
+public class DtoCustomer implements java.io.Serializable{
 
     private Long id;
 
@@ -19,4 +19,5 @@ public class DtoCustomer {
 
     private String status;
 
+    private String mobile;
 }

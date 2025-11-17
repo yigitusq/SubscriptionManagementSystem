@@ -10,7 +10,7 @@ import lombok.Setter;
 @Getter
 @Setter
 @Table(name = "customers_view")
-public class Customer {
+public class Customer implements java.io.Serializable{
     @Id
     private Long id;
     private String name;
