@@ -7,7 +7,7 @@ services:
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: 123
-      POSTGRES_DB: postgres
+      POSTGRES_MULTIPLE_DATABASES: "customerdb,subscriptiondb"
     ports:
       - "5432:5432"
     volumes:
@@ -15,6 +15,11 @@ services:
       - ./init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
     networks:
       - customer-service-network
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U yigit -d customerDB" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   zookeeper:
     image: confluentinc/cp-zookeeper:7.5.3
@@ -29,7 +34,8 @@ services:
     image: confluentinc/cp-kafka:7.5.3
     container_name: kafka
     depends_on:
-      - zookeeper
+      zookeeper:
+        condition: service_started
     ports:
       - "9092:9092"
     environment:
@@ -37,8 +43,14 @@ services:
       KAFKA_ZOOKEEPER_CONNECT: 'zookeeper:2181'
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_INTERNAL:PLAINTEXT
       KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092,PLAINTEXT_INTERNAL://kafka:29092
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,PLAINTEXT_INTERNAL://0.0.0.0:29092
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
       KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+
+    command: >
+      bash -c "echo 'Zookeeperin baslamasi icin 10 saniye bekleniyor...' && \
+               sleep 10 && \
+               /etc/confluent/docker/run"
     networks:
       - customer-service-network
 
@@ -73,6 +85,11 @@ services:
       - redis_data:/data
     networks:
       - customer-service-network
+    healthcheck:
+      test: [ "CMD", "redis-cli", "--raw", "ping" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   # 2. MİKROSERVİSLER ----------------------------------
   discovery-service:
@@ -106,6 +123,7 @@ services:
     ports:
       - "8081:8081"
     environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/customerdb
       SPRING_PROFILES_ACTIVE: docker
       spring.datasource.password: 123
     depends_on:
@@ -127,6 +145,7 @@ services:
     ports:
       - "8082:8082"
     environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/subscriptiondb
       SPRING_PROFILES_ACTIVE: docker
       spring.datasource.password: 123
     depends_on:
